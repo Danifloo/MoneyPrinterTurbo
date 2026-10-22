@@ -124,6 +124,7 @@ def download_photo(item, number):
             if len(resp.content) > 18_000_000:
                 continue
             image=Image.open(io.BytesIO(resp.content)).convert("RGB")
+            image.thumbnail((2000,2000), Image.Resampling.LANCZOS)
             if image.width<350 or image.height<300:
                 continue
             return image, {"nasa_id":nasa_id,"title":title,"url":url}
