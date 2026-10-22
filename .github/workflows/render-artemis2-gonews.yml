@@ -1,0 +1,39 @@
+name: Render GoNews Artemis II MP4
+on:
+  push:
+    paths:
+      - .github/workflows/render-artemis2-gonews.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  make-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - name: Checkout MoneyPrinterTurbo
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: FFmpeg and fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - name: Install lightweight offline editing dependencies
+        run: python -m pip install --quiet requests pillow numpy edge-tts gTTS
+      - name: Generate video from NASA photographs
+        run: |
+          mkdir -p /content
+          python docs/crear_video_artemis2.py
+      - name: Upload the MP4 and sources
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoNews-Artemis-II-Video
+          path: |
+            /content/Artemis_II_GoNews_9x16.mp4
+            /content/gonews_artemis2/fuentes_y_guion.txt
+          if-no-files-found: warn
+          retention-days: 7
