@@ -1,15 +1,17 @@
-name: Render GoNews Artemis II MP4
+name: Render GoNews Artemis II MP4 - gratis
 on:
-  push:
+  pull_request:
+    branches: [main]
     paths:
       - .github/workflows/render-artemis2-gonews.yml
+      - docs/crear_video_artemis2.py
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   make-video:
     runs-on: ubuntu-latest
-    timeout-minutes: 28
+    timeout-minutes: 35
     steps:
       - name: Checkout MoneyPrinterTurbo
         uses: actions/checkout@v4
