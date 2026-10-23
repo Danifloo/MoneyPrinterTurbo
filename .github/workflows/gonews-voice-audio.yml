@@ -11,13 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Descargar nueva voz latinoamericana
+      - name: Instalar FFmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+      - name: Descargar dos fragmentos de voz
         run: |
-          curl -fL --retry 2 --max-time 60 'https://www.aidocmaker.com/g0/audio?name=64f67cba47664dfb8e2d246469b8cc80' -o voiceover.download
-          file voiceover.download
-          test $(stat -c %s voiceover.download) -gt 15000
-          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 voiceover.download
-          mv voiceover.download gonews-voiceover.mp3
+          curl -fL --retry 2 --max-time 70 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/657a8012-8d70-44a8-aaea-896e14acb9f2.mp3' -o parte1.mp3
+          curl -fL --retry 2 --max-time 70 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/6043553d-afee-46e2-8d00-896549267cdb.mp3' -o parte2.mp3
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 parte1.mp3
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 parte2.mp3
+          printf "file 'parte1.mp3'\nfile 'parte2.mp3'\n" > voz.ffconcat
+          ffmpeg -hide_banner -loglevel error -y -f concat -safe 0 -i voz.ffconcat -c:a libmp3lame -q:a 2 gonews-voiceover.mp3
+          test $(stat -c %s gonews-voiceover.mp3) -gt 25000
       - name: Adjuntar voz descargable
         uses: actions/upload-artifact@v4
         with:
