@@ -41,20 +41,15 @@ SCRIPT = (
 )
 
 SCENES = [
-    ("Artemis II rocket launch April 2026", "VOLVIERON A LA LUNA", "DESPUÉS DE 50 AÑOS"),
-    ("Artemis II launch SLS rocket 2026", "1 DE ABRIL DE 2026", "EL DESPEGUE"),
-    ("Artemis II launch Kennedy Space Center", "UNA MISIÓN HISTÓRICA", "CUATRO ASTRONAUTAS"),
-    ("Artemis II crew astronauts 2026", "LA TRIPULACIÓN", "TRES DE NASA, UNO DE CANADÁ"),
-    ("Artemis II crew Orion spacecraft", "LA NAVE ORIÓN", "RUMBO AL ESPACIO PROFUNDO"),
-    ("Artemis II astronauts inside Orion", "PRUEBAS CRUCIALES", "SISTEMAS DE SUPERVIVENCIA"),
-    ("Artemis II Moon lunar flyby April 2026", "ALREDEDOR DE LA LUNA", "SIN ATERRIZAR"),
-    ("Artemis II far side Moon photo 2026", "UNA VISTA ÚNICA", "DESDE EL ESPACIO"),
-    ("Artemis II Orion Earth photo 2026", "MÁS DE 400 MIL KM", "LEJOS DE LA TIERRA"),
-    ("Artemis II lunar flyby Moon 2026", "9 DÍAS EN EL ESPACIO", "Y LLEGÓ EL REGRESO"),
-    ("Artemis II splashdown recovery April 2026", "10 DE ABRIL", "EL REGRESO A LA TIERRA"),
-    ("Artemis II splashdown parachutes 2026", "AMERIZAJE EN EL PACÍFICO", "CERCA DE SAN DIEGO"),
-    ("Artemis II crew recovery April 2026", "LOS CUATRO REGRESARON", "SANOS Y SALVOS"),
-    ("Artemis II Moon photo Orion spacecraft", "¿QUÉ VIENE AHORA?", "EL FUTURO DE LA LUNA"),
+    ("Artemis II rocket launch April 2026", "CUATRO ASTRONAUTAS", "RUMBO A LA LUNA"),
+    ("Artemis II launch SLS rocket 2026", "PRIMERO DE ABRIL", "MISIÓN ARTEMIS DOS"),
+    ("Artemis II crew astronauts 2026", "DESPUÉS DE 50 AÑOS", "OTRA VEZ MÁS ALLÁ"),
+    ("Artemis II Moon lunar flyby April 2026", "SOBREVOLARON LA LUNA", "SIN ATERRIZAR"),
+    ("Artemis II far side Moon photo 2026", "LA NAVE ORIÓN", "PRUEBAS EN EL ESPACIO"),
+    ("Artemis II Orion Earth photo 2026", "EL OBJETIVO", "FUTUROS ALUNIZAJES"),
+    ("Artemis II splashdown recovery April 2026", "DIEZ DE ABRIL", "EL REGRESO A CASA"),
+    ("Artemis II splashdown parachutes 2026", "AMERIZAJE EN EL PACÍFICO", "LOS CUATRO REGRESARON"),
+    ("Artemis II Moon photo Orion spacecraft", "¿Y EL SIGUIENTE PASO?", "EL FUTURO DE LA LUNA"),
 ]
 
 SOURCES = [
@@ -159,9 +154,7 @@ PHOTO_SOURCES = {
 }
 # Relación entre escenas del guion y fotografías adecuadas.
 PHOTO_SEQUENCE = (
-    "launch", "launch", "crew", "crew", "crew", "crew",
-    "moon", "moon", "moon", "moon",
-    "splashdown", "splashdown", "recovery", "moon"
+    "launch", "launch", "crew", "moon", "moon", "moon", "splashdown", "splashdown", "moon"
 )
 assert len(PHOTO_SEQUENCE) == len(SCENES)
 downloaded = {}
@@ -195,35 +188,56 @@ for i,(_query,headline,caption) in enumerate(SCENES):
     images.append((downloaded[category],headline,caption))
 
 
-# Audio en español latino gratuito, con voz masculina de Edge TTS.
-print("2/5 Generando narración...")
-audio_path = ROOT/"narracion.mp3"
-async def edge_voice():
-    import edge_tts
-    await edge_tts.Communicate(SCRIPT, "es-MX-JorgeNeural", rate="+5%", pitch="+0Hz").save(str(audio_path))
-
-try:
-    import edge_tts
-    asyncio.run(edge_voice())
-except Exception as error:
-    print("Edge TTS no respondió, intentando voz alternativa:",str(error)[:180])
-    from gtts import gTTS
-    gTTS(SCRIPT,lang="es",tld="com.mx").save(str(audio_path))
-if not audio_path.exists() or audio_path.stat().st_size < 25000:
-    raise RuntimeError("No se obtuvo narración válida, no se renderiza un video mudo.")
+# Nueva voz de ElevenLabs generada previamente en español latino.
+print("2/5 Recuperando narración real de ElevenLabs, sin comprar plan...")
+audio_path=ROOT/"narracion_elevenlabs.mp3"
+VOICE_URL="https://storage.googleapis.com/xi-backend/database/workspace/57e1bd34f7cf40a99803bc62ed30b2c7/content_generation/LDQVMuaDDgDxIa6AjKM0/X8TaLhn2DZW5Uhgzsy4f/content.mp3?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=xi-backend-prod%40xi-labs.iam.gserviceaccount.com%2F20261023%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20261023T192802Z&X-Goog-Expires=7200&X-Goog-SignedHeaders=host&X-Goog-Signature=1e2f22276955ce85157792ceda59b6a1330f8c0202958252a112060ffb572b9065c3d10502c32bd54e3a4ebf64373445897f4f592c8eae78ccbd7660b58683e41960dc72b700f272d780d022af1446635d65d1bef1e8dedf9f68230856b61c6026be0a4b88d3836a4e1540fc2f8ba51327fc52fe3669f0c3f5da434c4599b0651109c2b0b789c8996359ea1b439f333ef3d259c7d9f99b83639cb836629c43a3fbd73a1ff58a92969a6dc083abba069a91bce9bf3a4999a9dae231ac598c67eca73352de7bacc64a9aa0889b71fce1ed0dc9e0b876237821942192bbe371b1318ef44daab044e46d83e73e6f7082c048a565cc5b3db98ac95b331ae651579546"
+voice_response=session.get(VOICE_URL,timeout=90)
+voice_response.raise_for_status()
+audio_path.write_bytes(voice_response.content)
+if audio_path.stat().st_size < 15000:
+    raise RuntimeError("No se descargó correctamente la narración de ElevenLabs")
 
 def run(args):
-    subprocess.run(args, check=True)
+    subprocess.run(args,check=True)
 
 def duration(path):
-    r = subprocess.check_output([
-        "ffprobe","-v","error","-show_entries","format=duration",
-        "-of","default=noprint_wrappers=1:nokey=1",str(path)
-    ],text=True).strip()
+    r=subprocess.check_output(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",str(path)],text=True).strip()
     return float(r)
 
 audio_seconds=duration(audio_path)
-print(f"Duración de voz: {audio_seconds:.1f} segundos")
+print(f"Duración de voz ElevenLabs: {audio_seconds:.2f} segundos")
+
+# Subtítulos en español divididos en frases; ajuste proporcional a la locución.
+CAPTIONS=[
+ "El primero de abril, cuatro astronautas",
+ "despegaron rumbo a la Luna.",
+ "Era Artemis dos: el primer viaje tripulado",
+ "a sus alrededores en más de cincuenta años.",
+ "A bordo de Orión, la tripulación dejó atrás",
+ "la Tierra y sobrevoló la Luna.",
+ "No aterrizaron. Esta misión puso a prueba",
+ "la nave y sus sistemas antes de futuros alunizajes.",
+ "El diez de abril, la cápsula regresó",
+ "y amerizó en el océano Pacífico.",
+ "Ahora, la NASA tiene nuevos datos",
+ "para preparar el siguiente paso.",
+ "¿Te subirías a una misión como esta?",
+]
+def ass_time(t):
+    cs=round(t*100)
+    return f"{cs//360000}:{(cs//6000)%60:02d}:{(cs//100)%60:02d}.{cs%100:02d}"
+weights=[max(1, len(c.split())) for c in CAPTIONS]
+total_weight=sum(weights)
+sub_path=ROOT/"subtitulos.ass"
+header="[Script Info]\\nScriptType: v4.00+\\nPlayResX: 1080\\nPlayResY: 1920\\nWrapStyle: 2\\n[V4+ Styles]\\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\\nStyle: TikTok,DejaVu Sans,66,&H00FFFFFF,&H00FFD60A,&H00000000,&H99000000,-1,0,0,0,100,100,0,0,1,5,2,2,70,70,170,1\\n[Events]\\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\\n"
+lines=[header.replace("\\n","\n")]
+t=0
+for i,(caption,w) in enumerate(zip(CAPTIONS,weights)):
+    end=audio_seconds if i==len(CAPTIONS)-1 else t+audio_seconds*w/total_weight
+    lines.append(f"Dialogue: 0,{ass_time(t)},{ass_time(end)},TikTok,,0,0,0,,{caption}\\N".replace("\\N",""))
+    t=end
+sub_path.write_text("\n".join(lines)+"\n",encoding="utf-8")
 
 print("3/5 Diseñando escenas verticales...")
 font_base = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
@@ -245,8 +259,8 @@ for i, (photo, main, secondary) in enumerate(images):
             p[x,y]=alpha
     background.paste(dark,(0,0),mask)
     draw=ImageDraw.Draw(background)
-    draw.rounded_rectangle((48,1320,345,1400),radius=14,fill=(255,214,10))
-    draw.text((68,1331),"ARTEMIS II",font=smallfont,fill=(12,12,12))
+    draw.rounded_rectangle((48,1080,345,1160),radius=14,fill=(255,214,10))
+    draw.text((68,1091),"ARTEMIS II",font=smallfont,fill=(12,12,12))
     words=main.split()
     lines=[];current=""
     for word in words:
@@ -256,11 +270,11 @@ for i, (photo, main, secondary) in enumerate(images):
         else:
             current=test
     if current:lines.append(current)
-    yy=1460
+    yy=1200
     for line in lines[:3]:
         draw.text((50,yy),line,font=font,fill="white",stroke_width=1,stroke_fill="black")
-        yy += 96
-    draw.text((50,min(1810,yy+13)),secondary,font=smallfont,fill=(255,214,10))
+        yy += 91
+    draw.text((50,min(1490,yy+13)),secondary,font=smallfont,fill=(255,214,10))
     path=ROOT/f"frame_{i:02d}.jpg"
     background.save(path,"JPEG",quality=91,optimize=True)
     slide_paths.append(path)
@@ -285,8 +299,8 @@ with wave.open(str(music_path),"wb") as wf:
         fade=np.minimum(1,np.minimum(t/2.0,(seconds-t)/2.0))
         wf.writeframes((amp*fade*32767).astype("<i2").tobytes())
 
-print("5/5 Renderizando MP4...")
-scene_secs=(audio_seconds+1.0)/len(slide_paths)
+print("5/5 Montaje Reel con 9 cortes, zoom y subtítulos... ")
+scene_secs=audio_seconds/len(slide_paths)
 concat=ROOT/"slides.ffconcat"
 with concat.open("w") as file:
     file.write("ffconcat version 1.0\n")
@@ -297,7 +311,7 @@ with concat.open("w") as file:
 run(["ffmpeg","-y","-hide_banner","-loglevel","error",
      "-f","concat","-safe","0","-i",str(concat),
      "-i",str(audio_path),"-stream_loop","-1","-i",str(music_path),
-     "-filter_complex","[0:v]fps=30,format=yuv420p[v];[1:a]volume=1.0[n];[2:a]volume=0.18[m];[n][m]amix=inputs=2:duration=first:dropout_transition=0[a]",
+     "-filter_complex","[0:v]fps=30,zoompan=z='min(1.065,1.018+0.00006*on)':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=1:s=1080x1920:fps=30,subtitles=/content/gonews_artemis2/subtitulos.ass,format=yuv420p[v];[1:a]volume=1.0[n];[2:a]volume=0.12[m];[n][m]amix=inputs=2:duration=first:dropout_transition=0[a]",
      "-map","[v]","-map","[a]","-t",str(audio_seconds+0.3),
      "-c:v","libx264","-preset","veryfast","-crf","23",
      "-pix_fmt","yuv420p","-c:a","aac","-b:a","160k",
