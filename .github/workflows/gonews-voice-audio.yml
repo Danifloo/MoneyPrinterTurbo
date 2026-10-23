@@ -1,0 +1,26 @@
+name: Descargar locucion GoNews Artemis II
+on:
+  pull_request:
+    paths:
+      - .github/workflows/gonews-voice-audio.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Descargar nueva voz latinoamericana
+        run: |
+          curl -fL --retry 2 --max-time 60 'https://www.aidocmaker.com/g0/audio?name=64f67cba47664dfb8e2d246469b8cc80' -o voiceover.download
+          file voiceover.download
+          test $(stat -c %s voiceover.download) -gt 15000
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 voiceover.download
+          mv voiceover.download gonews-voiceover.mp3
+      - name: Adjuntar voz descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoNews-voz-natural-Artemis-II
+          path: gonews-voiceover.mp3
+          retention-days: 1
