@@ -132,41 +132,68 @@ def download_photo(item, number):
             continue
     return None,None
 
-print("1/5 Buscando fotografías oficiales de NASA...")
-cache, used, credits = {}, set(), []
-all_candidates = {}
-for idx, (query, headline, caption) in enumerate(SCENES):
-    if query not in cache:
-        try:
-            cache[query] = nasa_assets(query)
-        except Exception as ex:
-            print("Aviso: consulta de fotos:",str(ex)[:100])
-            cache[query] = []
-    all_candidates[query] = cache[query]
+print("1/5 Descargando fotografías REALES y verificadas de Artemis II...")
+# Fotografías de abril de 2026, no representaciones de IA.
+# Imágenes de agencias espaciales y medios que reproducen fotografías de NASA.
+PHOTO_SOURCES = {
+    "launch": (
+        "Lanzamiento Artemis II, NASA, 1 abril 2026",
+        "https://npr-brightspot.s3.amazonaws.com/c9/14/d673790e4357bb70317327660cc8/nasa-artemis-ii-launch.jpg",
+    ),
+    "crew": (
+        "Tripulación Artemis II ante Orion, fotografía NASA, 2023",
+        "https://gcp-na-images.contentstack.com/v3/assets/bltea6093859af6183b/bltd04fdead560b9111/6998cc2c7323afcfa02bd197/KSC-20230808-PH-KLS02_0098orig.jpg?branch=production",
+    ),
+    "moon": (
+        "Superficie lunar y Tierra desde Artemis II, NASA, 6 abril 2026",
+        "https://img.pressone.ro/MxESoMuSFvre67e0nF3vAgDirZc%3D/1980x1319/smart/https%3A%2F%2Fimages.pressone.ro%2Fwp-content%2Fuploads%2F2026%2F04%2F07182559%2FArtemis-2-luna-07.jpg",
+    ),
+    "splashdown": (
+        "Amerizaje de Orion Artemis II, foto de recuperación del programa, 10 abril 2026",
+        "https://d1ldvf68ux039x.cloudfront.net/thumbs/photos/2605/9676175/1000w_q95.jpg",
+    ),
+    "recovery": (
+        "US Navy recupera cápsula Orion tras Artemis II, 10 abril 2026",
+        "https://d1ldvf68ux039x.cloudfront.net/thumbs/photos/2604/9609121/2000w_q95.jpg",
+    ),
+}
+# Relación entre escenas del guion y fotografías adecuadas.
+PHOTO_SEQUENCE = (
+    "launch", "launch", "crew", "crew", "crew", "crew",
+    "moon", "moon", "moon", "moon",
+    "splashdown", "splashdown", "recovery", "moon"
+)
+assert len(PHOTO_SEQUENCE) == len(SCENES)
+downloaded = {}
+credits = []
+for key,(title,url) in PHOTO_SOURCES.items():
+    print("Foto:",title)
+    try:
+        response=session.get(url, timeout=45)
+        response.raise_for_status()
+        image=Image.open(io.BytesIO(response.content)).convert("RGB")
+        image.thumbnail((2000, 2000),Image.Resampling.LANCZOS)
+        if min(image.size) < 300:
+            raise RuntimeError("Foto demasiado pequeña")
+        downloaded[key]=image
+        credits.append({"title":title,"url":url})
+    except Exception as exc:
+        print("No disponible:",key,str(exc)[:180])
 
-def choose_image(i, query):
-    related = all_candidates.get(query, [])
-    # Otras consultas solo como respaldo; nunca presentar arte generativo como evidencia.
-    backup = [v for group in all_candidates.values() for v in group]
-    ordered = related + backup
-    for candidate in ordered:
-        if candidate[1] in used:
-            continue
-        image, credit = download_photo(candidate, i)
-        if image is not None:
-            used.add(candidate[1])
-            credits.append(credit)
-            return image
-    return None
+required = {"launch","moon","splashdown"}
+if not required.issubset(set(downloaded)):
+    raise RuntimeError("Falta una fotografía real de despegue, Luna o amerizaje. No se inventará ninguna imagen.")
+images=[]
+for i,(_query,headline,caption) in enumerate(SCENES):
+    category=PHOTO_SEQUENCE[i]
+    if category not in downloaded:
+        # Respaldo solo para grupos relacionados; nunca mostrar Luna como amerizaje.
+        substitute={"crew":"launch","recovery":"splashdown"}.get(category)
+        if substitute is None or substitute not in downloaded:
+            raise RuntimeError("Falta una foto real de "+category)
+        category=substitute
+    images.append((downloaded[category],headline,caption))
 
-images = []
-for i, (q, main, line) in enumerate(SCENES):
-    image = choose_image(i,q)
-    if image is not None:
-        images.append((image, main, line))
-        print("Fotografía real:",i+1,main)
-if len(images) < 6:
-    raise RuntimeError("NASA no devolvió al menos 6 fotografías válidas. No se creará un video con imágenes inventadas.")
 
 # Audio en español latino gratuito, con voz masculina de Edge TTS.
 print("2/5 Generando narración...")
