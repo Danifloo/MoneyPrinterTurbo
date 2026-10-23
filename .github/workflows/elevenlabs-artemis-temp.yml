@@ -1,0 +1,26 @@
+name: Recuperar audio ElevenLabs GoNews
+on:
+  pull_request:
+    paths:
+      - .github/workflows/elevenlabs-artemis-temp.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Install FFmpeg for validation
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+      - name: Retrieve generated MP3
+        run: |
+          curl --fail --location --retry 2 --max-time 80 'https://storage.googleapis.com/xi-backend/database/workspace/57e1bd34f7cf40a99803bc62ed30b2c7/content_generation/aKcHniwhkZGqcsYJkLAD/3XazXdAYXADHBg4b1hQv/content.mp3?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=xi-backend-prod%40xi-labs.iam.gserviceaccount.com%2F20261023%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20261023T195659Z&X-Goog-Expires=7200&X-Goog-SignedHeaders=host&X-Goog-Signature=520b8aa3e6eece2435ba1b80a6986faca1bd01eadf5725c7556ee73232f13bdf14800f056c4065f4f4de5924abe2ba47faef308d4cb0cc4e3fd7d2812e243e658b5c7efaf92917108b5ef116bb4835c00d6a0f6559dd34770b75e8c56cb22221d01f4ceb9e9c5f88b9357d0905c8f88f147c6791ac1465e963dc58a80f0cee84bc85c65b7187e214e5f1d6f235fa7ed4d09807dd48f559fd354a706579afea673b98abc3cf9666c3c522b80620b739f7f6e2d7b1459eca77a7bf39e7f0e14ab9a0388d3f89af3a6a86a914a52af4612eb4f0e0f4f6fafb475670fd7ceeac64d10e7fdaca611fa5c58f6d239aec5114b5d1256f114bb2313d6112808d911d000b' -o elevenlabs_voice.mp3
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 elevenlabs_voice.mp3
+          test $(stat -c%s elevenlabs_voice.mp3) -gt 20000
+      - name: Upload voice file
+        uses: actions/upload-artifact@v4
+        with:
+          name: ElevenLabs-Artemis-II-voz
+          path: elevenlabs_voice.mp3
+          retention-days: 1
