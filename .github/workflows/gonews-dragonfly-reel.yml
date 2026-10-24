@@ -1,0 +1,35 @@
+name: GoNews Dragonfly Professional Reel
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gonews/dragonfly_20261024/render.py'
+      - '.github/workflows/gonews-dragonfly-reel.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare free render tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-roboto fonts-dejavu-core
+          python -m pip install --quiet edge-tts pillow numpy scipy
+      - name: Assemble documentary Reel with real NASA animation
+        run: python gonews/dragonfly_20261024/render.py
+      - name: Verify output integrity
+        run: |
+          test -s gonews/dragonfly_20261024/output/GoNews_Dragonfly_2026_REEL_PRO_REAL_MOTION.mp4
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 gonews/dragonfly_20261024/output/GoNews_Dragonfly_2026_REEL_PRO_REAL_MOTION.mp4
+      - name: Downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoNews-Dragonfly-Reel-Video-Real
+          path: |
+            gonews/dragonfly_20261024/output/GoNews_Dragonfly_2026_REEL_PRO_REAL_MOTION.mp4
+            gonews/dragonfly_20261024/output/subtitulos.ass
+          retention-days: 7
