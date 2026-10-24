@@ -5,6 +5,9 @@ on:
     paths:
       - 'gonews/dragonfly_20261024/render.py'
       - '.github/workflows/gonews-dragonfly-reel.yml'
+  pull_request:
+    paths:
+      - 'gonews/dragonfly_20261024/**'
   workflow_dispatch:
 permissions:
   contents: read
