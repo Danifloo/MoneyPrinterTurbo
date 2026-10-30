@@ -285,7 +285,7 @@ with wave.open(str(music_path),"wb") as wf:
         fade=np.minimum(1,np.minimum(t/2.0,(seconds-t)/2.0))
         wf.writeframes((amp*fade*32767).astype("<i2").tobytes())
 
-print("5/5 Renderizando MP4...")
+print("5/5 Renderizando MP4 con movimiento suave estilo Remotion...")
 scene_secs=(audio_seconds+1.0)/len(slide_paths)
 concat=ROOT/"slides.ffconcat"
 with concat.open("w") as file:
@@ -297,7 +297,7 @@ with concat.open("w") as file:
 run(["ffmpeg","-y","-hide_banner","-loglevel","error",
      "-f","concat","-safe","0","-i",str(concat),
      "-i",str(audio_path),"-stream_loop","-1","-i",str(music_path),
-     "-filter_complex","[0:v]fps=30,format=yuv420p[v];[1:a]volume=1.0[n];[2:a]volume=0.18[m];[n][m]amix=inputs=2:duration=first:dropout_transition=0[a]",
+     "-filter_complex","[0:v]fps=30,zoompan=z=\'min(1.04,1.015+0.00018*on)\':x=\'(iw-iw/zoom)/2\':y=\'(ih-ih/zoom)/2\':d=1:s=1080x1920:fps=30,format=yuv420p[v];[1:a]volume=1.0[n];[2:a]volume=0.18[m];[n][m]amix=inputs=2:duration=first:dropout_transition=0[a]",
      "-map","[v]","-map","[a]","-t",str(audio_seconds+0.3),
      "-c:v","libx264","-preset","veryfast","-crf","23",
      "-pix_fmt","yuv420p","-c:a","aac","-b:a","160k",
