@@ -1,0 +1,102 @@
+name: GoNews Dragonfly Reel gratis
+on:
+  pull_request:
+    paths:
+      - .github/workflows/dragonfly-reel-20261024.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install free tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          pip install --quiet edge-tts pillow opencv-python-headless numpy
+      - name: Render original reel with NASA assets
+        run: |
+          cat > /tmp/make.py <<'PY'
+          import os,math,asyncio,subprocess,urllib.request,random
+          import numpy as np,cv2,edge_tts
+          from PIL import Image,ImageDraw,ImageFont
+          os.makedirs('release',exist_ok=True)
+          script="Este dron volará en una luna de Saturno. Y la NASA acaba de ensayar su primer vuelo. Pero atención: todavía no ha volado en el espacio. Fue una simulación en Maryland, con el sistema de navegación de Dragonfly. El vehículo recorrió un terreno virtual, buscó un sitio seguro, dio la vuelta y descendió sin piloto. Esto importa porque en Titán tendrá que tomar decisiones por sí mismo. Está previsto que despegue no antes de dos mil veintiocho y llegue en dos mil treinta y cuatro. Allí estudiará las dunas, la atmósfera y la química de esa luna, para buscar pistas sobre el origen de la vida. ¿Te gustaría ver su primer vuelo real?"
+          asyncio.run(edge_tts.Communicate(script,'es-MX-JorgeNeural',rate='+12%').save('release/voz.mp3'))
+          duration=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=nw=1:nk=1','release/voz.mp3']))
+          urls=['https://assets.science.nasa.gov/dynamicimage/assets/science/psd/planetary-science-division/2025/Dragonfly-BannerFactSheet_2024.png?fit=clip&h=720&w=1500','https://assets.science.nasa.gov/dynamicimage/assets/science/missions/dragonfly/FitCheck1.jpg?fit=clip&h=900&w=1400','https://assets.science.nasa.gov/dynamicimage/assets/science/psd/planetary-science-division/2025/Dragonfly_Landed_Closeup.png?fit=clip&h=900&w=1500','https://assets.science.nasa.gov/dynamicimage/assets/science/missions/dragonfly/IEM_harness.png?fit=clip&h=900&w=1000']
+          pics=[]
+          for i,url in enumerate(urls):
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'});p=f'release/nasa_{i}.jpg';open(p,'wb').write(urllib.request.urlopen(req,timeout=35).read());pics.append(Image.open(p).convert('RGB'));print('NASA photo',i,flush=True)
+            except Exception as e:print('photo failed',i,str(e)[:100],flush=True);pics.append(None)
+          W,H,FPS=576,1024,24
+          font='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+          regular='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+          f=lambda sz:ImageFont.truetype(font,sz)
+          fr=lambda sz:ImageFont.truetype(regular,sz)
+          scenes=[
+           ('ESTE DRON VOLARÁ','EN TITÁN',0,'ILUSTRACIÓN NASA','La NASA prepara un dron para Titán'),
+           ('ACABAN DE HACER','SU PRIMER ENSAYO',1,'PRUEBA REAL EN TIERRA','Se probó su vuelo autónomo'),
+           ('PERO NO FUE','EN SATURNO',2,'ILUSTRACIÓN NASA','Fue una simulación en Maryland'),
+           ('VOLÓ SOBRE','TERRENO VIRTUAL',-1,'GRÁFICO EXPLICATIVO','La prueba usó datos simulados'),
+           ('BUSCÓ UN SITIO','Y DESCENDIÓ',0,'ILUSTRACIÓN NASA','Buscó un lugar seguro'),
+           ('SIN PILOTO','DESDE LA TIERRA',3,'PRUEBA REAL EN TIERRA','Necesita tomar decisiones solo'),
+           ('DESPEGUE','DESDE 2028',-2,'GRÁFICO EXPLICATIVO','Su lanzamiento está previsto'),
+           ('LLEGADA A TITÁN','EN 2034',2,'ILUSTRACIÓN NASA','Después de seis años de viaje'),
+           ('ESTUDIARÁ','LA QUÍMICA DE TITÁN',1,'PRUEBA REAL EN TIERRA','Buscando pistas sobre la vida'),
+           ('¿VOLAREMOS','EN OTRA LUNA?',0,'ILUSTRACIÓN NASA','¿Qué descubrirá Dragonfly?')]
+          seg=duration/len(scenes)
+          def stamp(t):
+            return f'{int(t//3600):02}:{int(t%3600//60):02}:{int(t%60):02},{int(t%1*1000):03}'
+          with open('release/subtitulos.srt','w') as sf:
+            for j,z in enumerate(scenes):sf.write(f'{j+1}\n{stamp(j*seg)} --> {stamp((j+1)*seg)}\n{z[4]}\n\n')
+          output=cv2.VideoWriter('release/visual.mp4',cv2.VideoWriter_fourcc(*'mp4v'),FPS,(W,H))
+          for j in range(math.ceil(duration*FPS)):
+            t=j/FPS;ix=min(9,int(t/seg));a,b,ph,source,caption=scenes[ix];local=(t-ix*seg)/seg
+            im=Image.new('RGB',(W,H),(7,11,18));d=ImageDraw.Draw(im)
+            if ph>=0 and pics[ph] is not None:
+              photo=pics[ph]; pw,hh=photo.size; cropw=min(pw,int(hh*W/630));ofs=int(max(0,pw-cropw)*(0.08+0.84*(local if ix%2==0 else 1-local)));p=photo.crop((ofs,0,ofs+cropw,hh)).resize((W,630));im.paste(p,(0,135))
+            elif ph==-1:
+              pts=[(90,480),(155,420),(246,474),(350,389),(484,500)]
+              d.line(pts,fill='#FFD60A',width=7)
+              for x,y in pts:d.ellipse((x-8,y-8,x+8,y+8),fill='#FFD60A')
+            else:
+              d.line((80,460,500,460),fill='#FFD60A',width=7)
+              for x in [95,476]:d.ellipse((x-12,448,x+12,472),fill='#FFD60A')
+              d.text((152,408),'2028    →    2034',font=f(25),fill='white')
+            d=ImageDraw.Draw(im,'RGBA')
+            for k in range(340):d.line((0,684+k,W,684+k),fill=(1,4,8,min(252,int(k*.8))))
+            d.rectangle((34,42,87,49),fill='#FFD60A')
+            d.text((98,25),'GoNews',font=f(32),fill='white')
+            d.text((34,90),'NASA  /  DRAGONFLY',font=fr(18),fill='#EEEFEF')
+            d.text((30,717),a,font=f(27),fill='#FFFFFF',stroke_width=1,stroke_fill='#000000')
+            d.text((30,759),b,font=f(27),fill='#FFD60A',stroke_width=1,stroke_fill='#000000')
+            d.text((30,817),source,font=fr(16),fill='#FFFFFF')
+            d.rounded_rectangle((22,868,554,940),radius=13,fill=(13,16,22,240))
+            while d.textbbox((0,0),caption,font=fr(20))[2]>500:caption=caption[:-2]
+            d.text(((W-d.textbbox((0,0),caption,font=fr(20))[2])/2,893),caption,font=fr(20),fill='#FFFFFF')
+            d.rectangle((0,H-12,int(W*t/duration),H),fill='#FFD60A')
+            fade=min(1,(t-ix*seg)/.22,((ix+1)*seg-t)/.22)
+            if ix==9:fade=min(1,(t-ix*seg)/.22)
+            if fade<1:im=Image.blend(Image.new('RGB',(W,H),(5,6,8)),im,max(0,fade))
+            output.write(cv2.cvtColor(np.array(im),cv2.COLOR_RGB2BGR))
+            if j%240==0:print('frame',j,'of',int(duration*FPS),flush=True)
+          output.release()
+          subprocess.run(['ffmpeg','-y','-loglevel','error','-i','release/visual.mp4','-i','release/voz.mp3','-map','0:v','-map','1:a','-c:v','libx264','-preset','veryfast','-crf','24','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-shortest','-movflags','+faststart','release/GoNews_Dragonfly_2026_REEL.mp4'],check=True)
+          subprocess.run(['ffmpeg','-y','-loglevel','error','-ss','1','-i','release/GoNews_Dragonfly_2026_REEL.mp4','-frames:v','1','release/portada.jpg'],check=True)
+          print('VIDEO_READY',duration,os.stat('release/GoNews_Dragonfly_2026_REEL.mp4').st_size,flush=True)
+          PY
+          python /tmp/make.py
+      - name: Export Reel and captions
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoNews-Dragonfly-Reel-Gratis
+          path: |
+            release/GoNews_Dragonfly_2026_REEL.mp4
+            release/subtitulos.srt
+            release/portada.jpg
+          retention-days: 3
